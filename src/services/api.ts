@@ -31,6 +31,12 @@ export interface CreateOrderRequest {
   items: OrderItem[];
 }
 
+export interface UpdateOrderRequest {
+  orderId: string;
+  status?: string;
+  items?: OrderItem[];
+}
+
 export const api = {
   async getProducts(): Promise<Product[]> {
     try {
@@ -88,6 +94,45 @@ async getOrders(): Promise<Order[]> {
       return data.order;
     } catch (error) {
       console.error('Error creating order:', error);
+      throw error;
+    }
+  },
+
+  async updateOrder(updateData: UpdateOrderRequest): Promise<Order> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.order;
+    } catch (error) {
+      console.error('Error updating order:', error);
+      throw error;
+    }
+  },
+
+  async deleteOrder(orderId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
       throw error;
     }
   },

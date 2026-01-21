@@ -4,6 +4,7 @@ import { ProductCard } from './components/ProductCard';
 import { Cart } from './components/Cart';
 import { CheckoutForm } from './components/CheckoutForm';
 import { OrdersList } from './components/OrdersList';
+import { EditOrderModal } from './components/EditOrderModal';
 import { api, Product, OrderItem, Order } from './services/api';
 
 type View = 'products' | 'orders';
@@ -14,6 +15,7 @@ function App() {
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +101,37 @@ function App() {
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditOrder = async (orderId: string, status: string, items: OrderItem[]) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await api.updateOrder({ orderId, status, items });
+      setSuccess(`Order ${orderId} updated successfully!`);
+      setEditingOrder(null);
+      await loadOrders();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await api.deleteOrder(orderId);
+      setSuccess(`Order ${orderId} deleted successfully!`);
+      await loadOrders();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete order');
     } finally {
       setLoading(false);
     }
@@ -207,7 +240,12 @@ function App() {
         ) : (
           <div>
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Your Orders</h2>
-            <OrdersList orders={orders} loading={ordersLoading} />
+            <OrdersList
+              orders={orders}
+              loading={ordersLoading}
+              onEdit={setEditingOrder}
+              onDelete={handleDeleteOrder}
+            />
           </div>
         )}
       </main>
@@ -220,11 +258,21 @@ function App() {
         />
       )}
 
-      {loading && showCheckout && (
+      {editingOrder && (
+        <EditOrderModal
+          order={editingOrder}
+          onSubmit={handleEditOrder}
+          onClose={() => setEditingOrder(null)}
+        />
+      )}
+
+      {loading && (showCheckout || editingOrder) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="text-gray-700 font-medium">Creating your order...</p>
+            <p className="text-gray-700 font-medium">
+              {showCheckout ? 'Creating your order...' : 'Updating order...'}
+            </p>
           </div>
         </div>
       )}

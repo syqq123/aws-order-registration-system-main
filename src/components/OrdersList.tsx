@@ -1,12 +1,14 @@
-import { Package, Calendar, Mail, User } from 'lucide-react';
+import { Package, Calendar, Mail, User, Edit2, Trash2 } from 'lucide-react';
 import { Order } from '../services/api';
 
 interface OrdersListProps {
   orders: Order[];
   loading: boolean;
+  onEdit?: (order: Order) => void;
+  onDelete?: (orderId: string) => void;
 }
 
-export function OrdersList({ orders, loading }: OrdersListProps) {
+export function OrdersList({ orders, loading, onEdit, onDelete }: OrdersListProps) {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -83,6 +85,33 @@ export function OrdersList({ orders, loading }: OrdersListProps) {
               <span className="text-xl font-bold text-blue-600">${order.totalAmount}</span>
             </div>
           </div>
+
+          {(onEdit || onDelete) && (
+            <div className="mt-4 pt-4 border-t flex gap-3">
+              {onEdit && (
+                <button
+                  onClick={() => onEdit(order)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Edit2 size={18} />
+                  Edit Order
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Are you sure you want to delete order ${order.orderId}?`)) {
+                      onDelete(order.orderId);
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 size={18} />
+                  Delete Order
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

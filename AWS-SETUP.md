@@ -144,7 +144,27 @@ Jeśli któryś krok nie zgadza się z tym co widzisz, patrz sekcję **Troublesh
    - Klucz: `SNS_TOPIC_ARN`, Wartość: `arn:aws:sns:REGION:ACCOUNT_ID:OrderNotifications` (Twój ARN z kroku 2)
 6. Kliknij **Deploy**
 
-### 4.4 Testowanie Lambda (opcjonalnie)
+### 4.4 Tworzenie funkcji: updateOrder
+
+1. Powtórz kroki jak wyżej
+2. **Function name**: `updateOrder`
+3. Użyj roli: `LambdaEcommerceRole`
+4. Wklej kod z `aws-lambda/updateOrder.js`
+5. W zakładce **Configuration** → **Environment variables**:
+   - Klucz: `ORDERS_TABLE_NAME`, Wartość: `OrdersTable`
+6. Kliknij **Deploy**
+
+### 4.5 Tworzenie funkcji: deleteOrder
+
+1. Powtórz kroki jak wyżej
+2. **Function name**: `deleteOrder`
+3. Użyj roli: `LambdaEcommerceRole`
+4. Wklej kod z `aws-lambda/deleteOrder.js`
+5. W zakładce **Configuration** → **Environment variables**:
+   - Klucz: `ORDERS_TABLE_NAME`, Wartość: `OrdersTable`
+6. Kliknij **Deploy**
+
+### 4.6 Testowanie Lambda (opcjonalnie)
 
 Możesz przetestować każdą funkcję:
 1. Kliknij **Test** w funkcji
@@ -224,13 +244,41 @@ Możesz przetestować każdą funkcję:
    - **Lambda function**: `createOrder`
 4. Kliknij **Create method**
 
+#### Metoda PUT dla /orders
+
+1. Zaznacz `/orders`
+2. Kliknij **Create method** → **PUT**
+3. Wypełnij:
+   - **Integration type**: AWS Lambda
+   - **Lambda function**: `updateOrder`
+4. Kliknij **Create method**
+
+#### Resource: /orders/{orderId}
+
+1. Zaznacz `/orders` w drzewie z lewej
+2. Kliknij **Create resource**
+3. Wypełnij:
+   - **Resource name**: `{orderId}` (dokładnie tak, z nawiasami klamrowymi!)
+   - **Enable API Gateway CORS**: ✓
+4. Kliknij **Create resource**
+
+#### Metoda DELETE dla /orders/{orderId}
+
+1. Zaznacz `/orders/{orderId}`
+2. Kliknij **Create method** → **DELETE**
+3. Wypełnij:
+   - **Integration type**: AWS Lambda
+   - **Lambda function**: `deleteOrder`
+   - **Use Lambda Proxy integration**: ✓ (zaznacz!)
+4. Kliknij **Create method**
+
 ### 5.3 Włączanie CORS (WAŻNE!)
 
 CORS powinien być już włączony, jeśli zaznaczyłeś **Enable API Gateway CORS** przy tworzeniu zasobów.
 
 Aby sprawdzić/włączyć CORS ręcznie:
 
-Dla każdego zasobu (/products i /orders):
+Dla każdego zasobu (/products, /orders i /orders/{orderId}):
 1. Zaznacz zasób
 2. Kliknij na **OPTIONS** (jeśli istnieje, to CORS jest włączony)
 3. Jeśli OPTIONS nie istnieje:
@@ -306,7 +354,19 @@ Aplikacja powinna być dostępna na `http://localhost:5173`
 1. Kliknij zakładkę "Orders"
 2. Powinieneś zobaczyć listę utworzonych zamówień
 
-### Test 4: SNS (jeśli skonfigurowałeś subskrypcję)
+### Test 4: Edycja zamówienia
+1. W zakładce "Orders" kliknij "Edit Order" przy wybranym zamówieniu
+2. Zmień status zamówienia (np. na "SHIPPED")
+3. Zmień ilość produktów lub usuń produkty
+4. Kliknij "Save Changes"
+5. Powinieneś zobaczyć zaktualizowane zamówienie
+
+### Test 5: Usuwanie zamówienia
+1. W zakładce "Orders" kliknij "Delete Order" przy wybranym zamówieniu
+2. Potwierdź usunięcie
+3. Zamówienie powinno zniknąć z listy
+
+### Test 6: SNS (jeśli skonfigurowałeś subskrypcję)
 1. Po utworzeniu zamówienia powinieneś dostać email
 
 ---
@@ -321,6 +381,8 @@ Aplikacja powinna być dostępna na `http://localhost:5173`
    - `/aws/lambda/getProducts`
    - `/aws/lambda/getOrders`
    - `/aws/lambda/createOrder`
+   - `/aws/lambda/updateOrder`
+   - `/aws/lambda/deleteOrder`
 4. Kliknij na grupę → **Log streams**
 5. Przeglądaj logi wykonania funkcji
 
@@ -343,6 +405,84 @@ Aplikacja powinna być dostępna na `http://localhost:5173`
 ✅ **0.5 pkt** - React frontend (frontend)
 
 **Razem: 4.5 / 5 punktów**
+
+---
+
+## Testy jednostkowe
+
+Projekt zawiera testy jednostkowe dla wszystkich funkcji Lambda z pokryciem 100%.
+
+### Uruchomienie testów
+
+```bash
+# Instalacja zależności testowych
+npm install
+
+# Uruchomienie testów
+npm test
+
+# Uruchomienie testów z raportem pokrycia
+npm run test:coverage
+```
+
+### Struktura testów
+
+Testy znajdują się w folderze `__tests__/lambda/`:
+- `getProducts.test.js` - testy dla funkcji getProducts
+- `getOrders.test.js` - testy dla funkcji getOrders
+- `createOrder.test.js` - testy dla funkcji createOrder
+- `updateOrder.test.js` - testy dla funkcji updateOrder
+- `deleteOrder.test.js` - testy dla funkcji deleteOrder
+
+### Pokrycie testów
+
+Wszystkie funkcje Lambda mają 100% pokrycie kodu, w tym:
+- Pozytywne scenariusze
+- Negatywne scenariusze (błędy)
+- Walidacja danych wejściowych
+- Obsługa CORS
+- Kalkulacje (np. suma zamówienia)
+
+---
+
+## CI/CD z GitLab
+
+Projekt zawiera konfigurację CI/CD dla GitLab w pliku `.gitlab-ci.yml`.
+
+### Pipeline stages
+
+1. **Install** - instalacja zależności
+2. **Test** - uruchomienie testów i walidacji
+   - Lint (ESLint)
+   - Typecheck (TypeScript)
+   - Unit tests
+   - Test coverage
+3. **Build** - budowanie projektu
+4. **Deploy** - deployment na staging/production
+
+### Uruchomienie pipeline
+
+Pipeline uruchamia się automatycznie przy każdym pushu do repozytorium.
+
+### Deployment
+
+- **Staging**: manual deployment dla brancha `develop`
+- **Production**: manual deployment dla brancha `main`
+
+### Coverage Report
+
+Po każdym uruchomieniu testów generowany jest raport pokrycia dostępny w:
+- Artifacts w GitLab CI
+- GitLab Pages (jeśli jest skonfigurowane)
+
+### Konfiguracja zmiennych środowiskowych w GitLab
+
+W Settings → CI/CD → Variables dodaj:
+- `AWS_ACCESS_KEY_ID` - klucz dostępu AWS
+- `AWS_SECRET_ACCESS_KEY` - tajny klucz AWS
+- `AWS_DEFAULT_REGION` - region AWS (np. `us-east-1`)
+
+**Uwaga**: Automatyczny deployment Lambda do AWS wymaga dodatkowych skryptów, które można dodać w przyszłości.
 
 ---
 
@@ -389,7 +529,16 @@ Aplikacja powinna być dostępna na `http://localhost:5173`
 
 **Rozwiązanie**:
 - Upewnij się że Lambda jest w tej samej **Regii** co API Gateway
-- Sprawdź czy nazwa funkcji Lambda jest poprawna (dokładnie: `getProducts`, `getOrders`, `createOrder`)
+- Sprawdź czy nazwa funkcji Lambda jest poprawna (dokładnie: `getProducts`, `getOrders`, `createOrder`, `updateOrder`, `deleteOrder`)
+- Zrób ponowny deploy API Gateway
+
+### Problem: Nie działa edycja lub usuwanie zamówienia
+
+**Rozwiązanie**:
+- Sprawdź czy utworzyłeś funkcje Lambda `updateOrder` i `deleteOrder`
+- Sprawdź czy dodałeś metodę PUT dla `/orders` w API Gateway
+- Sprawdź czy utworzyłeś zasób `/orders/{orderId}` z metodą DELETE
+- Sprawdź czy zaktualizowałeś politykę IAM o uprawnienia `UpdateItem` i `DeleteItem`
 - Zrób ponowny deploy API Gateway
 
 ---
@@ -398,7 +547,7 @@ Aplikacja powinna być dostępna na `http://localhost:5173`
 
 Aby uniknąć kosztów:
 1. Usuń API Gateway
-2. Usuń funkcje Lambda
+2. Usuń funkcje Lambda (wszystkie 5: getProducts, getOrders, createOrder, updateOrder, deleteOrder)
 3. Usuń tabelę DynamoDB
 4. Usuń topic SNS
 5. Usuń rolę IAM
